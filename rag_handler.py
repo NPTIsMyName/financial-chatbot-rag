@@ -4,6 +4,7 @@ from typing import Dict
 
 from langchain_community.vectorstores import Chroma
 from langchain_huggingface.embeddings import HuggingFaceEmbeddings
+from langchain_huggingface.embeddings import HuggingFaceEndpointEmbeddings
 from langchain.memory import ConversationBufferMemory
 from langchain.chains import ConversationalRetrievalChain
 from langchain.prompts import (
@@ -11,27 +12,42 @@ from langchain.prompts import (
     SystemMessagePromptTemplate,
     HumanMessagePromptTemplate,
 )
-from langchain_groq import ChatGroq
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 
-def _require_groq_key() -> str:
-    api_key = os.getenv("GROQ_API_KEY")
+# from langchain_groq import ChatGroq
+
+# def _require_groq_key() -> str:
+#     api_key = os.getenv("GROQ_API_KEY")
+#     if not api_key:
+#         raise RuntimeError("Missing GROQ_API_KEY in environment.")
+#     return api_key
+
+
+
+
+# def create_llm():
+#     api_key = _require_groq_key()
+#     return ChatGroq(
+#         model="llama-3.1-8b-instant",
+#         temperature=0.1,
+#         max_tokens=512,
+#         api_key=api_key,
+#     )
+def _require_google_key() -> str:
+    api_key = os.getenv("GOOGLE_API_KEY")
     if not api_key:
-        raise RuntimeError("Missing GROQ_API_KEY in environment.")
+        raise RuntimeError("⚠️ Missing GOOGLE_API_KEY in environment.")
     return api_key
 
 
-
-
 def create_llm():
-    api_key = _require_groq_key()
-    return ChatGroq(
-        model="llama-3.1-8b-instant",
+    _require_google_key()
+    return ChatGoogleGenerativeAI(
+        model="gemini-2.5-flash",
         temperature=0.1,
-        max_tokens=512,
-        api_key=api_key,
+        max_output_tokens=2048,
     )
-
 
 def create_chain(vectorstore: Chroma) -> ConversationalRetrievalChain:
     llm = create_llm()
@@ -44,13 +60,27 @@ def create_chain(vectorstore: Chroma) -> ConversationalRetrievalChain:
     # Chat-style prompt compatible with ChatHuggingFace
     qa_prompt = ChatPromptTemplate.from_messages([
         SystemMessagePromptTemplate.from_template(
-            "Bạn là trợ lý AI tổng hợp tin tức tài chính. Trả lời rõ ràng, tự nhiên bằng tiếng Việt. "
-            "Nếu không tìm thấy thông tin phù hợp trong ngữ cảnh, trả lời: 'Xin lỗi, tôi không tìm thấy thông tin phù hợp trong dữ liệu hiện có.'"
-        ),
+            """You are **FinSight**, an AI assistant specialized in analyzing and summarizing financial news, market reports, and economic trends.
+            Your goals:
+            1. Summarize key information from the provided context clearly and accurately.
+            2. Analyze financial or market trends (e.g., stocks, currencies, companies, macroeconomy) based on available data.
+            3. If possible, provide short-term **predictions or insights** (e.g., likely to rise/fall/stay stable) — but make it clear that this is an **estimated analysis**, not investment advice.
+            4. If the question asks for forecasts, respond cautiously, using data-driven reasoning.
+            5. If no relevant information is found in the provided context, respond exactly with:"Xin lỗi, tôi không tìm thấy thông tin phù hợp trong dữ liệu hiện có."
+            6. Always respond in **natural, fluent Vietnamese**, using a **professional, objective, and concise** tone.
+            7. The answer must be **short, clear, and information-rich** — concise but still complete.
+            """
+            ),
         HumanMessagePromptTemplate.from_template(
-            "Câu hỏi: {question}\nNgữ cảnh:\n{context}\n\nHãy trả lời ngắn gọn và chính xác."
-        ),
-    ])
+            """Question: {question}
+            Context: {context}
+            Please provide:
+            - A concise and accurate summary.
+            - A brief analysis or prediction if supported by the data.
+            - The answer must be written entirely in Vietnamese."""
+            ),
+        ])
+
 
     return ConversationalRetrievalChain.from_llm(
         llm=llm,
@@ -70,12 +100,17 @@ def load_vectorstore():
         model_kwargs={'device': 'cpu'},  # Use CPU to avoid GPU requirements
         encode_kwargs={'normalize_embeddings': True}
     )
+    # embeddings = HuggingFaceEndpointEmbeddings(
+    #     model='Qwen/Qwen3-Embedding-0.6B', 
+    #     task="feature-extraction", 
+    #     huggingfacehub_api_token=os.getenv("HUGGINGFACEHUB_API_TOKEN")
+    # )
     return Chroma(
         collection_name="vnexpress_kinhdoanh",
         persist_directory="chroma_store",
         embedding_function=embeddings,
     )
-
+    
 
 def format_answer(text: str) -> str:
     """Format the answer text by normalizing bullets, removing markdown, and adding line breaks."""
@@ -119,8 +154,7 @@ class RAGHandler:
         return self.sessions[session_id]
     
     def process_rag_query(self, session_id: str, message: str) -> str:
-        """Process RAG queries with conversation memory."""
         chain = self.get_chain(session_id)
-        result = chain({"question": message})
-        raw_answer = result.get("answer", "")
+        result = chain.invoke({"question": message})
+        raw_answer = result.get("answer") or result.get("result") or ""
         return format_answer(raw_answer)

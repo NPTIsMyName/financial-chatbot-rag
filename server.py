@@ -46,17 +46,31 @@ def create_app() -> FastAPI:
         def index():
             return FileResponse("static/index.html")
 
+    # @app.post("/api/chat")
+    # def chat(body: ChatRequest):
+    #     if app.state.rag_handler.vectorstore is None:
+    #         raise HTTPException(status_code=503, detail="Vector store not initialized.")
+
+    #     try:
+    #         # Always use RAG path
+    #         answer = app.state.rag_handler.process_rag_query(body.session_id, body.message)
+    #         return {"answer": answer}
+    #     except Exception as e:
+    #         raise HTTPException(status_code=500, detail=str(e))
+    
     @app.post("/api/chat")
     def chat(body: ChatRequest):
         if app.state.rag_handler.vectorstore is None:
             raise HTTPException(status_code=503, detail="Vector store not initialized.")
 
         try:
-            # Always use RAG path
             answer = app.state.rag_handler.process_rag_query(body.session_id, body.message)
             return {"answer": answer}
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             raise HTTPException(status_code=500, detail=str(e))
+
 
     return app
 

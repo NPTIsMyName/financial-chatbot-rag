@@ -1,9 +1,9 @@
 # build_data.py
 from dotenv import load_dotenv
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_huggingface.embeddings import HuggingFaceEndpointEmbeddings
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
-from langchain.schema import Document
+from langchain_core.documents import Document
 import json
 import hashlib
 import os
@@ -18,16 +18,19 @@ def make_documents(items):
         content = (item.get("content") or "").strip()
         if not content:
             continue
-        title = item.get("title", "")
+
+        # Lọc metadata để tránh NoneType
         meta = {
-            "title": title,
-            "date": item.get("date", ""),
-            "url": item.get("url", ""),
-            "author": item.get("author", ""),
+            "title": str(item.get("title") or ""),
+            "date": str(item.get("date") or ""),
+            "url": str(item.get("url") or ""),
+            "author": str(item.get("author") or ""),
         }
-        # Prepend title to content to weight it in retrieval
+
+        title = meta["title"]
         page_content = f"{title}\n\n{content}".strip() if title else content
         docs.append(Document(page_content=page_content, metadata=meta))
+
     return docs
 
 def text_2_chunks(docs):
@@ -52,9 +55,10 @@ def build_chroma():
 
     print(f"Chunks: {len(chunks)}")
     print("Generating embeddings...")
-    embeddings = HuggingFaceEndpointEmbeddings(model='BAAI/bge-m3', 
-        task="feature-extraction", 
-        huggingfacehub_api_token=os.getenv("HUGGINGFACEHUB_API_TOKEN"))
+    embeddings = HuggingFaceEmbeddings(model_name='BAAI/bge-m3', 
+        model_kwargs = {"device" : "cpu"},
+        encode_kwargs= {"normalize_embeddings": False}
+        )
 
     print("Saving to local ChromaDB...")
     collection_name = "vnexpress_kinhdoanh"

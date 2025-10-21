@@ -28,6 +28,7 @@ MANIFEST
 
 # Virtual environments
 venv/
+envcc/
 env/
 ENV/
 env.bak/
@@ -65,3 +66,6 @@ logs/
 *.key
 *.pem
 secrets.json
+
+test_lib_os_and_api.py
+test_gg_api.py
