@@ -2,6 +2,7 @@
 from dotenv import load_dotenv
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_huggingface import HuggingFaceEndpointEmbeddings
 from langchain_community.vectorstores import Chroma
 from langchain_core.documents import Document
 import json
@@ -55,6 +56,13 @@ def build_chroma():
 
     print(f"Chunks: {len(chunks)}")
     print("Generating embeddings...")
+    
+    #Use HF API embeddings
+    # embeddings = HuggingFaceEndpointEmbeddings(model='BAAI/bge-m3', 
+    #     task="feature-extraction", 
+    #     huggingfacehub_api_token=os.getenv("HUGGINGFACEHUB_API_TOKEN"))
+    
+    #Use local HF embeddings
     embeddings = HuggingFaceEmbeddings(model_name='BAAI/bge-m3', 
         model_kwargs = {"device" : "cpu"},
         encode_kwargs= {"normalize_embeddings": False}
