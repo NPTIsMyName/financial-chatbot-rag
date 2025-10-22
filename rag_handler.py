@@ -15,39 +15,39 @@ from langchain.prompts import (
 from langchain_google_genai import ChatGoogleGenerativeAI
 
 
-# from langchain_groq import ChatGroq
+from langchain_groq import ChatGroq
 
-# def _require_groq_key() -> str:
-#     api_key = os.getenv("GROQ_API_KEY")
-#     if not api_key:
-#         raise RuntimeError("Missing GROQ_API_KEY in environment.")
-#     return api_key
-
-
-
-
-# def create_llm():
-#     api_key = _require_groq_key()
-#     return ChatGroq(
-#         model="llama-3.1-8b-instant",
-#         temperature=0.1,
-#         max_tokens=512,
-#         api_key=api_key,
-#     )
-def _require_google_key() -> str:
-    api_key = os.getenv("GOOGLE_API_KEY")
+def _require_groq_key() -> str:
+    api_key = os.getenv("GROQ_API_KEY")
     if not api_key:
-        raise RuntimeError("⚠️ Missing GOOGLE_API_KEY in environment.")
+        raise RuntimeError("Missing GROQ_API_KEY in environment.")
     return api_key
 
 
+
+
 def create_llm():
-    _require_google_key()
-    return ChatGoogleGenerativeAI(
-        model="gemini-2.5-flash",
-        temperature=0.1,
-        max_output_tokens=2048,
+    api_key = _require_groq_key()
+    return ChatGroq(
+        model="llama-3.1-8b-instant",
+        temperature=0.2,
+        max_tokens=1024,
+        api_key=api_key,
     )
+# def _require_google_key() -> str:
+#     api_key = os.getenv("GOOGLE_API_KEY")
+#     if not api_key:
+#         raise RuntimeError("⚠️ Missing GOOGLE_API_KEY in environment.")
+#     return api_key
+
+
+# def create_llm():
+#     _require_google_key()
+#     return ChatGoogleGenerativeAI(
+#         model="gemini-2.5-flash",
+#         temperature=0.1,
+#         max_output_tokens=1024,
+#     )
 
 def create_chain(vectorstore: Chroma) -> ConversationalRetrievalChain:
     llm = create_llm()
@@ -57,10 +57,10 @@ def create_chain(vectorstore: Chroma) -> ConversationalRetrievalChain:
         return_messages=True,
     )
 
-    # Chat-style prompt compatible with ChatHuggingFace
+    # Chat-style prompt compatible with ChatHuggingFace FinSight
     qa_prompt = ChatPromptTemplate.from_messages([
         SystemMessagePromptTemplate.from_template(
-            """You are **FinSight**, an AI assistant specialized in analyzing and summarizing financial news, market reports, and economic trends.
+            """You are an AI assistant specialized in analyzing and summarizing financial news, market reports, and economic trends.
             Your goals:
             1. Summarize key information from the provided context clearly and accurately.
             2. Analyze financial or market trends (e.g., stocks, currencies, companies, macroeconomy) based on available data.
